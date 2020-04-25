@@ -15,7 +15,7 @@ sudo apt install mysql-server
 Connect to MySQL and create an empty database called `amarok`.
 
 ```bash
-sudo mysql -u root -e "create database amarok"
+sudo mysql -u root -e "CREATE DATABASE amarok"
 ```
 
 Then stop the service, we're going in inject the Amarok files manually.
@@ -37,41 +37,30 @@ sudo service mysql start
 Let's check:
 
 ```bash
-sudo mysql amarok -u root -e "SHOW TABLES"
-
-sudo mysql amarok -u root -e "SELECT COUNT(*) FROM tracks"
-
-sudo mysql amarok -u root -e "SELECT COUNT(*) FROM albums"
-
-sudo mysql amarok -u root -e "SELECT COUNT(*) FROM artists"
-
-sudo mysql amarok -u root -e "SELECT COUNT(*) FROM statistics"
+sudo mysql amarok -u root < inspect.sql
 ```
 
 If the counts are correct, we can proceed with dumping the data.
 
 ```base
-sudo mysql amarok -u root --xml -e "SELECT \
-    d.lastmountpoint AS 'root', \
-    u.rpath AS 'rel_path', \
-    aar.name AS 'album_artist', \
-    a.name AS 'album', \
-    t.discnumber AS 'disc_n', \
-    t.tracknumber AS 'track_n', \
-    ar.name AS 'artist', \
-    t.title, \
-    s.rating \
-  FROM tracks t \
-    JOIN urls u ON (t.url = u.id) \
-    JOIN devices d ON (u.deviceid = d.id) \
-    LEFT JOIN albums a ON (t.album = a.id) \
-    LEFT JOIN artists ar ON (t.artist = ar.id) \
-    LEFT JOIN artists aar ON (a.artist = aar.id) \
-    JOIN statistics s ON (t.id = s.id)" \
-  > amarok_export.xml
+sudo mysql amarok -u root --xml < export.sql > amarok_export.xml
 ```
 
-Let's check the result:
+The exported file, `amarok_export.xml`, should contain one element per track, similar to the following:
+
+```xml
+    <field name="root">/home</field>
+    <field name="rel_path">./username/Music/Library/U2/1987. The Joshua Tree/01. Where The Streets Have No Name.flac</field>
+    <field name="album_artist">U2</field>
+    <field name="album">The Joshua Tree</field>
+    <field name="disc_n" xsi:nil="true" />
+    <field name="track_n">1</field>
+    <field name="artist">U2</field>
+    <field name="title">Where The Streets Have No Name</field>
+    <field name="rating">9</field>
+```
+
+Let's inspect the result and check if the export is successful:
 
 ```bash
 less amarok_export.xml
@@ -87,4 +76,16 @@ cat amarok_export.xml | grep "<row>" | wc -l
 
 You should see the same number you've seen above for the count of tracks.
 
-Export is complete.
+Export is complete, you can now delete the database and stop the MySQL server.
+
+```bash
+sudo mysql -u root -e "DROP DATABASE amarok"
+
+sudo service mysql stop
+```
+
+If needed, you can also uninstall MySQL:
+
+```bash
+sudo apt purge mysql-server
+```
