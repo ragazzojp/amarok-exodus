@@ -40,7 +40,7 @@ Last but not least, the solution should offer the possibility of a complete back
 
 It's still not 100% clear but so far this is plan:
 
-- [MusicBrainz](http://musicbrainz.org) is the central piece of the solution.
+- This project is the central piece of the solution: [MusicBrainz](http://musicbrainz.org).
   MusicBrainz is an open music encyclopedia that collects music metadata and makes it available to the public.
   I'll use MusicBrainz identifiers (MBID) to uniquely identify songs and associate ratings to them.
 

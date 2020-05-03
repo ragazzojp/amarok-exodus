@@ -47,9 +47,10 @@ If the counts match the numbers of your music archive, we can proceed with expor
 sudo mysql amarok -u root --xml < export.sql > amarok_export.xml
 ```
 
-The exported file, `amarok_export.xml`, should contain one element per track, similar to the following:
+The exported file, `amarok_export.xml`, should contain one `<row>` element per track, similar to the following:
 
 ```xml
+  <row>
     <field name="root">/home</field>
     <field name="rel_path">./username/Music/Library/U2/1987. The Joshua Tree/01. Where The Streets Have No Name.flac</field>
     <field name="album_artist">U2</field>
@@ -59,6 +60,7 @@ The exported file, `amarok_export.xml`, should contain one element per track, si
     <field name="artist">U2</field>
     <field name="title">Where The Streets Have No Name</field>
     <field name="rating">9</field>
+  </row>
 ```
 
 Let's inspect the result and check if the export is successful:
