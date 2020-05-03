@@ -1,91 +1,63 @@
-# Amarok Exodus
+# The Exodus from Amarok
 
-I've invested so much time on my music library and Amarok, but it's now time to let it goo and migrate to Kodi.
+I've invested so much time on my music library and [Amarok](https://amarok.kde.org),
+but it's now time to let it go and migrate to a different, more modern solution.
 
-## Exporting Ratings from Amarok
+This repository is developed to document and keep track of the migration to MusicBrainz and Kodi.
+It contains simple scripts and tools I wrote for myself and I leave here for others.
 
-Install MySQL if you don't have it already running. This procedure was tested with MySQL 5.7.
+## Why
 
-On (K)Ubuntu:
+Maintaining ratings and a large music archive on a single Amarok instance is becoming impossible.
+The main reason is that music is not consumed anymore in front of a monitor. A music consumption experience
+solely on the desktop or laptop is now limiting. Accessing musics over the network, on multiple devices,
+on smartphones, on the go, from the workplace, from the living room with proper hearphones or amplifier,
+is the way many people including me would like to consume their own music.
 
-```bash
-sudo apt install mysql-server
-```
+Listening, but also maintaining the music archive, adding, tagging, cleaning, removing and rating songs
+can still be an activity performed primarily on a deskopt or laptop, but the music archive and,
+in particular, music ratings can't be locked inside one single software.
 
-Connect to MySQL and create an empty database called `amarok`.
+Last but not least, in the last years the development of Amarok almost stalled. While it's still ok
+to use it as media player and music collection manager, there are better alternatives.
 
-```bash
-sudo mysql -u root -e "CREATE DATABASE amarok"
-```
+## The Goal
 
-Then stop the service, we're going in inject the Amarok files manually.
+The goal is to move the music archive to a folder on a [NAS](https://openmediavault.org) or to any
+other directory or location from where it can be directly played, accessed remotely (e.g. via DLNA),
+served over the network with some sort of web music player, cached on smartphones, served
+to connected amplifiers or Kodi installations on smart TVs, Raspberry PIs or Amazon TV sticks.
 
-```bash
-sudo service mysql stop
+That would be (relatively) easy unless you have rated all the songs over more than 15 years.
 
-sudo cp ~/.kde/share/apps/amarok/mysqle/amarok/* /var/lib/mysql/amarok
+This is my case. I don't want to lose my ratings. Instead, I want to keep them somewhere,
+so that they're presented back to me on compatible music players like Kodi. In addition,
+I want the possiblity to update the ratings while listening to the music.
 
-sudo chown -R mysql:mysql /var/lib/mysql/amarok
-```
+Last but not least, the solution should offer the possibility of a complete backup and restore.
 
-We can then now restart the service.
+## The Plan
 
-```bash
-sudo service mysql start
-```
+It's still not 100% clear but so far this is plan:
 
-Let's check:
+- [MusicBrainz](http://musicbrainz.org) is the central piece of the solution.
+  MusicBrainz is an open music encyclopedia that collects music metadata and makes it available to the public.
+  I'll use MusicBrainz identifiers (MBID) to uniquely identify songs and associate ratings to them.
 
-```bash
-sudo mysql amarok -u root < inspect.sql
-```
+- [Phase 1](tagging.md): all the songs in the archive must be tagged via [MusicBrainz Picard](https://picard.musicbrainz.org),
+  a wonderful tool to tag your music. It fixes and completes tags, remove unwanted tags, make sure all the songs
+  have proper MusicBrainz identifiers (MBID) for themselves but also for albums and authors.
+  It puts order in the chaos and gives you the fantasting feeling that everything is under control.
 
-If the counts are correct, we can proceed with dumping the data.
+- [Phase 2](export.md): export the ratings from Amarok to a file. Since Amarok does not store
+  the MusicBrainz identifiers for the songs, this file won't have any MBIDs.
+  This is a problem we'll solve later.
 
-```base
-sudo mysql amarok -u root --xml < export.sql > amarok_export.xml
-```
+- [Phase 3](associate.md): associate ratings to the MBIDs and produce a mapping containing all your ratings.
+  This will be the only file, in addition to the music files themselves, that must be saved from Amarok.
+  Once done, you and your ratings will be independent not only from Amarok, but from any other
+  specific software and from details like in which directory files are stored, file names and formats,
 
-The exported file, `amarok_export.xml`, should contain one element per track, similar to the following:
+- [Phase 4](sync.md): upload and sync your ratings with your account on MusicBrainz (TBC).
 
-```xml
-    <field name="root">/home</field>
-    <field name="rel_path">./username/Music/Library/U2/1987. The Joshua Tree/01. Where The Streets Have No Name.flac</field>
-    <field name="album_artist">U2</field>
-    <field name="album">The Joshua Tree</field>
-    <field name="disc_n" xsi:nil="true" />
-    <field name="track_n">1</field>
-    <field name="artist">U2</field>
-    <field name="title">Where The Streets Have No Name</field>
-    <field name="rating">9</field>
-```
-
-Let's inspect the result and check if the export is successful:
-
-```bash
-less amarok_export.xml
-```
-
-Press `Q` to quit `less`.
-
-Alternatively:
-
-```base
-cat amarok_export.xml | grep "<row>" | wc -l
-```
-
-You should see the same number you've seen above for the count of tracks.
-
-Export is complete, you can now delete the database and stop the MySQL server.
-
-```bash
-sudo mysql -u root -e "DROP DATABASE amarok"
-
-sudo service mysql stop
-```
-
-If needed, you can also uninstall MySQL:
-
-```bash
-sudo apt purge mysql-server
-```
+- [Phase 5](import.md): import your ratings back to players, like Kodi (TBC).
