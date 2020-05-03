@@ -25,7 +25,7 @@ sudo service mysql stop
 
 sudo cp ~/.kde/share/apps/amarok/mysqle/amarok/* /var/lib/mysql/amarok
 
-sudo chown mysql:mysql /var/lib/mysql/amarok/*
+sudo chown -R mysql:mysql /var/lib/mysql/amarok
 ```
 
 We can then now restart the service.
