@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import os
 from xml.dom import Node
 from xml.dom.minidom import parse
 import mutagen
-
-recording_tags = ['MUSICBRAINZ_TRACKID', 'musicbrainz_trackid']
 
 parser = argparse.ArgumentParser(description='Associate Amarok ratings to MBIDs')
 
@@ -54,6 +53,7 @@ def assign(by_path):
             ids = ids + [x.decode('ascii') for x in tags['----:com.apple.iTunes:MusicBrainz Track Id']]
         return ids
 
+    print('Matching recording to files and assigning ratings')
     by_recording_id = {}
     matched = 0
     unmatched = 0
@@ -76,7 +76,10 @@ def assign(by_path):
     return by_recording_id
 
 def save(output, by_recording_id):
-    pass
+    print('Writing ratings to {}'.format(output))
+    data = { 'ratings': { 'recordings': by_recording_id } }
+    with open(output, 'w') as out:
+        json.dump(data, out, indent=4)
 
 by_path = load(args.input)
 
