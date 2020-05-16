@@ -3,6 +3,8 @@
 import argparse
 import json
 import os
+from collections import defaultdict
+from statistics import mean
 from xml.dom import Node
 from xml.dom.minidom import parse
 import mutagen
@@ -53,8 +55,8 @@ def assign(by_path):
             ids = ids + [x.decode('ascii') for x in tags['----:com.apple.iTunes:MusicBrainz Track Id']]
         return ids
 
-    print('Matching recording to files and assigning ratings')
-    by_recording_id = {}
+    print('Matching files and assigning ratings')
+    by_recording_id = defaultdict(list)
     matched = 0
     unmatched = 0
     for path in by_path:
@@ -68,21 +70,33 @@ def assign(by_path):
         else:
             matched = matched + 1
             for recording_id in recording_ids:
-                by_recording_id[recording_id] = by_path[path]
+                by_recording_id[recording_id].append(by_path[path])
 
     print('{} ratings to assign'.format(len(by_path)))
     print('{} matched files'.format(matched))
     print('{} unmatched files'.format(unmatched))
-    return by_recording_id
 
-def save(output, by_recording_id):
+    assigned = { 'recording': by_recording_id }
+
+    return assigned
+
+def rate(assigned):
+    def rate_list(l):
+        return mean(map(float, l))
+    def rate_all(kl):
+        return { k: rate_list(l) for k, l in kl.items() }
+    return { k: rate_all(kl) for k, kl in assigned.items() }
+
+def save(output, ratings):
     print('Writing ratings to {}'.format(output))
-    data = { 'ratings': { 'recordings': by_recording_id } }
+    data = { 'ratings': ratings }
     with open(output, 'w') as out:
         json.dump(data, out, indent=4)
 
 by_path = load(args.input)
 
-by_recording_id = assign(by_path)
+assigned = assign(by_path)
 
-save(args.output, by_recording_id)
+ratings = rate(assigned)
+
+save(args.output, ratings)
