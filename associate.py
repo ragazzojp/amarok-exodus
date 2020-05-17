@@ -44,31 +44,50 @@ def load(input):
 
 def assign(by_path):
 
+    def parse_release_ids(tags):
+        ids = []
+        if 'TXXX:MusicBrainz Album Id' in tags: # mp3
+            ids = ids + tags['TXXX:MusicBrainz Album Id'].text
+        if 'MUSICBRAINZ_ALBUMID' in tags: # flac
+            ids = ids + tags['MUSICBRAINZ_ALBUMID']
+        if '----:com.apple.iTunes:MusicBrainz Album Id' in tags: # m4a
+            ids = ids + [x.decode('ascii') for x in tags['----:com.apple.iTunes:MusicBrainz Album Id']]
+        return ids
+
     def parse_recording_ids(tags):
         ids = []
         for t in tags.values():
-            if isinstance(t, mutagen.id3.UFID) and t.owner == 'http://musicbrainz.org':
+            if isinstance(t, mutagen.id3.UFID) and t.owner == 'http://musicbrainz.org': #mp3
                 ids.append(t.data.decode('ascii'))
-        if 'MUSICBRAINZ_TRACKID' in tags:
+        if 'MUSICBRAINZ_TRACKID' in tags: # flac
             ids = ids + tags['MUSICBRAINZ_TRACKID']
-        if '----:com.apple.iTunes:MusicBrainz Track Id' in tags:
+        if '----:com.apple.iTunes:MusicBrainz Track Id' in tags: #m4a
             ids = ids + [x.decode('ascii') for x in tags['----:com.apple.iTunes:MusicBrainz Track Id']]
         return ids
 
     print('Matching files and assigning ratings')
+    by_release_id = defaultdict(list)
     by_recording_id = defaultdict(list)
     matched = 0
     unmatched = 0
     for path in by_path:
         tags = mutagen.File(path).tags
+        release_ids = parse_release_ids(tags)
         recording_ids = parse_recording_ids(tags)
+        if len(release_ids) > 1:
+            print('Ambiguous release MBIDs found for {}: {}'.format(path, release_ids))
         if len(recording_ids) > 1:
             print('Ambiguous recording MBIDs found for {}: {}'.format(path, recording_ids))
+        if not release_ids:
+            print('Cannot find release MBID for {}'.format(path))
+            unmatched = unmatched + 1
         elif not recording_ids:
             print('Cannot find recoding MBID for {}'.format(path))
             unmatched = unmatched + 1
         else:
             matched = matched + 1
+            for release_id in release_ids:
+                by_release_id[release_id].append(by_path[path])
             for recording_id in recording_ids:
                 by_recording_id[recording_id].append(by_path[path])
 
@@ -76,13 +95,13 @@ def assign(by_path):
     print('{} matched files'.format(matched))
     print('{} unmatched files'.format(unmatched))
 
-    assigned = { 'recording': by_recording_id }
+    assigned = { 'releases': by_release_id, 'recordings': by_recording_id }
 
     return assigned
 
 def rate(assigned):
     def rate_list(l):
-        return mean(map(float, l))
+        return round(mean(map(float, l)) / 2.0, 3)
     def rate_all(kl):
         return { k: rate_list(l) for k, l in kl.items() }
     return { k: rate_all(kl) for k, kl in assigned.items() }
@@ -93,10 +112,16 @@ def save(output, ratings):
     with open(output, 'w') as out:
         json.dump(data, out, indent=4)
 
+def summary(ratings):
+    print('Processed ratings for {} releases (avg.)'.format(len(ratings['releases'])))
+    print('Processed ratings for {} recordings'.format(len(ratings['recordings'])))
+
 by_path = load(args.input)
 
 assigned = assign(by_path)
 
 ratings = rate(assigned)
+
+summary(ratings)
 
 save(args.output, ratings)
